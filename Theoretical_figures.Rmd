@@ -1,0 +1,913 @@
+---
+title: "SIR metapop"
+output: pdf_document
+date: "2024-12-31"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE,
+                      fig.align = "center",
+                      message = FALSE,
+                      warning = FALSE,
+                      results = 'show')
+
+knitr::opts_knit$set(root.dir='C:/Users/wbenhamou/Desktop/OMEGA/Data_and_codes')
+```
+\newpage
+
+# Initialization
+
+```{r, results='hide'}
+# Cleaning objects from the workplace
+rm(list=ls())
+
+# Packages (may first require installations: install.packages())
+library(tidyverse) # for data manipulation
+library(tidyr) # for data manipulation
+library(scales) # to manipulate the internal scaling infrastructure used by ggplot2
+library(RColorBrewer) # for colors and palettes
+library(gridExtra) # to show multiple plots
+library(cowplot) # to show multiple plots
+library(ggpubr) # to show multiple plots
+library(deSolve) # to solve a system of ordinary differential equations
+library(boot) # for the inverse logit function 'inv.logit'
+library(rootSolve)
+library(ggpattern)
+
+# Execute functions from external R script
+source("Functions.R")
+
+Sys.setlocale("LC_TIME", "English")
+```
+
+# Evolutionary dynamics of an emerging variant in a two-patch metapopulation.
+
+```{r}
+nA <- 100
+nB <- 100
+
+qB0 <- 1/100
+
+I0w <- 1E-7
+I0m <- qB0/(1-qB0)*I0w
+
+init <- c("SA"=nA-I0w-I0m, "IAw"=I0w, "IAm"=I0m, "RA"=0,
+          "SB"=nB-I0w, "IBw"=I0w, "IBm"=0, "RB"=0)
+
+tf <- 255
+tM <- 80
+times <- seq(0,tf,1)
+
+x_breaks <- seq(-50,tf-tM,50)
+```
+
+## Higher duration of infectiousness
+
+```{r, fig.width=10, fig.height=4}
+bAw <- bBw <- bAm <- bBm <- 0.15
+
+gAw <- gBw <- 0.1
+gAm <- gBm <- gAw/2
+
+mA <- 0
+mB <- 0.1
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate2(init, times=times, parms=parms, tM=tM, qB0=qB0)
+
+simul$time <- simul$time-tM
+
+(Fig1a <- plot_grid(
+  
+  simul[, colnames(simul) %in% c("time", "logit_qA", "logit_qB", "Approx_WM")] %>%
+    gather(variable, value, -time, -Approx_WM) %>%
+    subset(Approx_WM==FALSE) %>%
+    ggplot(aes(x=time, y=value, col=variable)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(lwd=0.75) +
+      labs(x='Time', y='Logit-frequency of the variant\n', col="Population",
+           title=paste0("Higher duration of infectiousness")) +
+      scale_color_manual(values=c('#da6967', '#4c97cc'), labels=c("A","B")) +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(-6,8), breaks=seq(-5,7.5,2.5)) +
+      scale_linetype_manual(values=c(1,3)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=10),
+            axis.title.y=element_text(size=12), axis.text.y=element_text(size=11),
+            legend.position=c(0.85,0.3), legend.background=element_rect(colour='black',linewidth=0.2),
+            plot.title=element_text(size=11, face='bold.italic', hjust=0.5)) +
+      guides(lty='none'), # 6 x 4
+  
+  plot_grid(
+    ggplot() +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(data=subset(simul, Approx_WM==FALSE), aes(x=time, y=qB*(1-qB)), col='#4c97cc') +
+      labs(y="Genetic variance\n(pop. B)\n") +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(limits=c(0,0.25), expand=c(0,0)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+            axis.title.y=element_text(size=9), axis.text.y=element_text(size=8)),
+    ggplot() +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(data=subset(simul, Approx_WM==FALSE), aes(x=time, y=qA-qB)) +
+      labs(x="Time", y=expression(q^A-q^B)) +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(limits=c(0,1), expand=c(0,0)) +
+      theme_classic() +
+      theme(axis.title.x=element_text(size=10), axis.text.x=element_text(size=9),
+            axis.title.y=element_text(size=10), axis.text.y=element_text(size=8)),
+    
+    ncol=1, labels = c('B', 'C'), align = 'v'),
+  
+  ncol=2, rel_widths = c(0.6,0.4), labels=c('A')))
+```
+
+## Higher transmission rate
+
+```{r, fig.width=10, fig.height=4}
+bAw <- bBw <- 0.15
+bAm <- bBm <- bBw*1.3
+
+gAw <- gBw <- 0.1
+gAm <- gBm <- 0.1
+
+mA <- 0
+mB <- 0.1
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate2(init, times=times, parms=parms, tM=tM, qB0=qB0)
+simul$time <- simul$time-tM
+
+(Fig1b <- plot_grid(
+  
+  simul[, colnames(simul) %in% c("time", "logit_qA", "logit_qB", "Approx_WM")] %>%
+    gather(variable, value, -time, -Approx_WM) %>%
+    subset(Approx_WM==FALSE) %>%
+    ggplot(aes(x=time, y=value, col=variable, lty=Approx_WM)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(lwd=0.75) +
+      labs(x='\nTime', y='Logit-frequency of the variant\n', col="Population",
+           title=paste0("Higher transmission rate")) +
+      scale_color_manual(values=c('#da6967', '#4c97cc'), labels=c("A","B")) +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(-6,8), breaks=seq(-5,7.5,2.5)) +
+      scale_linetype_manual(values=c(1,3)) +  
+      theme_classic() +
+      theme(axis.title.x=element_text(size=12), axis.text.x=element_text(size=10),
+            axis.title.y=element_text(size=12), axis.text.y=element_text(size=11),
+            legend.position=c(0.85,0.3), legend.background=element_rect(colour='black',linewidth=0.2),
+            plot.title=element_text(size=11, face='bold.italic', hjust=0.5)) +
+      guides(lty='none'), # 6 x 4
+  
+  plot_grid(
+    ggplot() +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(data=subset(simul, Approx_WM==FALSE), aes(x=time, y=qB*(1-qB)), col='#4c97cc') +
+      labs(y="Genetic variance\n(pop. B)\n") +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(limits=c(0,0.25), expand=c(0,0)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+            axis.title.y=element_text(size=9), axis.text.y=element_text(size=8)),
+    ggplot() +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(data=subset(simul, Approx_WM==FALSE), aes(x=time, y=qA-qB)) +
+      labs(x="Time", y=expression(q^A-q^B)) +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(limits=c(0,1), expand=c(0,0)) +
+      scale_linetype_manual(values=c(1,3)) +
+      theme_classic() +
+      theme(axis.title.x=element_text(size=10), axis.text.x=element_text(size=9),
+            axis.title.y=element_text(size=10), axis.text.y=element_text(size=8)),
+    ncol=1, labels = c('E', 'F'), align = 'v'),
+  
+  ncol=2, rel_widths = c(0.6,0.4), labels=c('D')))
+```
+
+```{r, fig.width=8, fig.height=4}
+plot_grid(
+  
+  simul[, colnames(simul) %in% c("time", "logit_qA", "logit_qB", "Approx_WM")] %>%
+    gather(variable, value, -time, -Approx_WM) %>%
+    subset(Approx_WM==FALSE) %>%
+    ggplot(aes(x=time, y=value, col=variable, lty=Approx_WM)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(lwd=0.75) +
+      labs(x='\nTime', y='Logit-frequency of the variant\n', col="Population") +
+      scale_color_manual(values=c('#da6967', '#4c97cc'), labels=c("A","B")) +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(qB0),7), breaks=seq(-5,5,2.5)) +
+      scale_linetype_manual(values=c(1,3)) +
+      annotate(geom='text', label=paste0("Variant: +", (bAm/bAw-1)*100, "% transmission rate"),
+               x=-60, y=5.5, hjust=0, size=3.5, fontface='italic') +
+      theme_classic() +
+      theme(axis.title.x=element_text(size=12), axis.text.x=element_text(size=10),
+            axis.title.y=element_text(size=12), axis.text.y=element_text(size=11),
+            legend.position=c(0.85,0.3), legend.background=element_rect(colour='black',linewidth=0.2)) +
+      guides(lty='none'), # 6 x 4
+  
+  plot_grid(
+    ggplot() +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(data=subset(simul, Approx_WM==FALSE), aes(x=time, y=qB*(1-qB)), col='#4c97cc') +
+      labs(y="Genetic variance\n(pop. B)\n") +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(limits=c(0,0.255), expand=c(0,0)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+            axis.title.y=element_text(size=9), axis.text.y=element_text(size=8)),
+    ggplot() +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(data=subset(simul, Approx_WM==FALSE), aes(x=time, y=qA-qB)) +
+      labs(x="Time", y=expression(q^A-q^B)) +
+      scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
+      scale_y_continuous(limits=c(0,0.35), expand=c(0,0)) +
+      scale_linetype_manual(values=c(1,3)) +
+      theme_classic() +
+      theme(axis.title.x=element_text(size=10), axis.text.x=element_text(size=9),
+            axis.title.y=element_text(size=10), axis.text.y=element_text(size=8)),
+    ncol=1, labels = c('B', 'C'), align = 'v'),
+  
+  ncol=2, rel_widths = c(0.6,0.4), labels=c('A'))
+```
+
+## Plot with both scenarios
+
+```{r, fig.width=9, fig.height=8}
+plot_grid(Fig1a, ggdraw()+draw_line(x=c(0,1), y=0.5, lty=2), Fig1b,
+          ncol=1, rel_heights=c(0.425,0.05,0.425))
+```
+
+# Evolutionary dynamics of an emerging variant in a host metapopulation with more than two pop.
+
+```{r}
+n <- 9
+
+N <- 100
+
+qi0 <- 1/100
+
+I0w <- 1E-7
+I0m <- qi0/(1-qi0)*I0w
+
+bAw <- bBw <- 0.11
+bAm <- bBm <- bBw*1.15
+
+gAw <- gBw <- 0.1
+gAm <- gBm <- 0.1
+
+init <- c("S"=c(N-I0w-I0m, rep(N-I0w,n-1)),
+          "Iw"=rep(I0w,n),
+          "Im"=c(I0m, rep(0,n-1)),
+          "R"=rep(0,n))
+
+tf <- 500
+tM <- c(seq(40,40*(n-1),40),tf)
+
+m <- 1E-2
+M <- matrix(0, ncol=n, nrow=n)
+diag(M) <- 1
+
+parms <- list("bw"=bAw, "bm"=bAm, "gw"=gAw, "gm"=gAm, "M"=M)
+
+simul <- simulate.n(init=init, times=seq(0,tM[1],0.1), parms=parms)
+
+for(i in 2:length(tM)){
+  
+  parms$M[1:i,1:i] <- c(rep(c(1-m*(i-1), rep(m,i)),i-1), 1-m*(i-1))
+  
+  init <- unlist(simul[nrow(simul),2:(4*n+1)])
+  init[[paste0("Im",i)]] <- qi0/(1-qi0)*init[[paste0("Iw",i)]]
+  
+  simul <- simul[-nrow(simul),] %>% rbind(simulate.n(init=init, times=seq(tM[i-1],tM[i],0.1), parms=parms))
+}
+
+simul[mapply(is.infinite, simul)] <- NA
+
+colors <- c("#da6967", "#e7c459","#5fbb55","#4c97cc",
+            "#bc67da","#daa167","#da67ab","#67c3da","#8a96ac")
+
+simul[,c(1, grep("logit_q", colnames(simul)))] %>%
+  gather(id, value, -time) %>%
+  ggplot(aes(x=time, y=value, col=id)) +
+  geom_vline(xintercept=c(0, tM[-length(tM)]), col=colors, lty='dashed', cex=0.3) +
+  geom_line(cex=0.7) +
+  labs(x="\nTime", y="Logit-frequency of the variant\n", col="Pop.") +
+  scale_x_continuous(expand=c(0,0), limits=c(-1,tf)) +
+  scale_y_continuous(limits=c(logit(qi0),2.5), breaks=-4:2, expand=c(0,0)) +
+  scale_color_manual(values=colors, labels=LETTERS[c(1:n-1,n+1)]) +
+  theme_classic() +
+  
+  annotation_custom(ggplotGrob(
+    data.frame("x"=1:n, "id"=rep(1:n,each=n),
+               "y"=c(c(NA, rep(1, 8)), 2:9 %>% sapply(function(x){return(c(rep(NA,x-1), rep(x,n-x+1)))})) %>% c) %>%
+      ggplot(aes(x=x, y=y, col=as.factor(id))) +
+      geom_point(cex=2, alpha=0.8) +
+      labs(x="\nConnected populations") +
+      scale_color_manual(values=colors) +
+      scale_x_continuous(limits=c(2,n)) +
+      theme_void() + theme(legend.position='none', axis.title.x=element_text(size=7))),
+    xmin=40, xmax=350, ymin=0, ymax=2.5)
+  
+# 5.5 x 4
+```
+
+# The effect of population sizes on the dynamics of the variant frequency in the focal pop.
+
+```{r}
+mA <- mB <- 1E-2
+
+prev0 <- 1E-6
+qB0 <- 1/100
+
+nA <- 100
+nratio_vec <- c(0.02,0.1,1,10,50)
+
+greens <- rev(colorRampPalette(brewer.pal(9,"Greens"))(length(nratio_vec)+2)[-(1:2)])
+
+times <- seq(0,170,0.5)
+```
+
+# Higher transmission rate
+
+```{r, fig.width=5, fig.height=4}
+bAw <- bBw <- 0.15
+bAm <- bBm <- bAw*1.3
+gAw <- gBw <- gAm <- gBm <- 0.1
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- nratio_vec %>% lapply(function(nratio){
+  nB <- nratio*nA
+  init <- c("SA"=nA*(1-prev0), "IAw"=nA*prev0, "IAm"=0, "RA"=0,
+            "SB"=nB*(1-prev0), "IBw"=0, "IBm"=nB*prev0, "RB"=0)
+  return(simulate(init, times=times, parms=parms) %>% cbind('n_ratio'=nratio))
+}) %>% bind_rows
+
+simul$n_ratio <- factor(simul$n_ratio, levels=sort(nratio_vec, decreasing=TRUE))
+
+Fig2A <- ggplot(simul, aes(x=time, y=logit_qA, col=n_ratio, lty=Approx_WM)) +
+  geom_hline(yintercept=0, cex=1, col='grey80') +
+  geom_line(lwd=0.7) +
+  labs(title="Higher transmission rate\n",
+       x='Time', y='Logit-frequency of the variant (pop. A)\n', col=expression(N^B/N^A)) +
+  scale_x_continuous(expand=c(0,0), breaks=seq(0,200,50)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-7,11), breaks=seq(-5,10,2.5)) +
+  scale_color_manual(values=greens) +
+  scale_linetype_manual(values=c(1,3)) +
+  theme_classic() +
+  theme(axis.title.x=element_text(size=10), axis.text.x=element_text(size=10),
+        axis.title.y=element_text(size=11), axis.text.y=element_text(size=10),
+        legend.title=element_text(size=10), legend.text=element_text(size=10),
+        plot.title=element_text(size=11, face='bold.italic', hjust=0.5)) +
+  guides(lty='none')
+```
+
+# Neutral case (no selection)
+
+```{r, fig.width=5, fig.height=4}
+bAw <- bBw <- bAm <- bBm <- 0.15
+gAw <- gBw <- gAm <- gBm <- 0.1
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- nratio_vec %>% lapply(function(nratio){
+  nB <- nratio*nA
+  init <- c("SA"=nA*(1-prev0), "IAw"=nA*prev0, "IAm"=0, "RA"=0,
+            "SB"=nB*(1-prev0), "IBw"=0, "IBm"=nB*prev0, "RB"=0)
+  return(simulate(init, times=times, parms=parms) %>% cbind('n_ratio'=nratio))
+}) %>% bind_rows
+
+simul$n_ratio <- factor(simul$n_ratio, levels=sort(nratio_vec, decreasing=TRUE))
+
+Fig2B <- ggplot(simul, aes(x=time, y=logit_qA, col=n_ratio, lty=Approx_WM)) +
+  geom_hline(yintercept=0, cex=1, col='grey80') +
+  geom_line(lwd=0.7) +
+  labs(title="No selection\n", x='Time', y='Logit-frequency of the variant (pop. A)\n',
+       col=expression(N^B/N^A)) +
+  scale_x_continuous(expand=c(0,0), breaks=seq(0,200,50)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-7,11), breaks=seq(-5,10,2.5)) +
+  scale_color_manual(values=greens) +
+  scale_linetype_manual(values=c(1,3)) +
+  theme_classic() +
+  theme(axis.title.x=element_text(size=10), axis.text.x=element_text(size=10),
+        axis.title.y=element_text(size=11), axis.text.y=element_text(size=10),
+        legend.title=element_text(size=10), legend.text=element_text(size=10),
+        plot.title=element_text(size=11, face='bold.italic', hjust=0.5)) +
+  guides(lty='none') +
+  
+  annotation_custom(ggplotGrob(
+    ggplot(subset(simul, Approx_WM), aes(x=time, fill=n_ratio)) +
+      geom_ribbon(aes(ymin=0, ymax=qA)) +
+      labs(x='Time', y=expression(q^A)) +
+      scale_x_continuous(expand=c(0,0), breaks=seq(0,200,100)) +
+      scale_y_continuous(expand=c(0,0), limits=c(0,1), breaks=seq(0,1,0.5)) +
+      scale_fill_manual(values=greens) +
+      scale_linetype_manual(values=c(1,3)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=6.5),
+            axis.title.y=element_text(size=9, angle=0, vjust=0.5), axis.text.y=element_text(size=6.5),
+            legend.position='none')),
+    xmin=70, xmax=170, ymin=5, ymax=11)
+```
+
+## Plot
+
+```{r, fig.width=8, fig.height=4}
+ggarrange(Fig2A, Fig2B + theme(axis.title.y=element_blank()),
+          ncol=2, common.legend=TRUE, legend='right', labels = LETTERS[1:2], widths=c(0.53,0.47))
+```
+
+# The transient disruption of spatial differentiation
+
+```{r, fig.width=8, fig.height=6}
+bAw <- bBw <- 0.15
+bAm <- bBm <- bBw*1.3
+
+gAw <- gBw <- 0.1
+gAm <- gBm <- 0.1
+
+mA <- 1E-2
+mB <- 1E-2
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+I0 <- 1E-3
+
+nA <- 100
+nratio_vec <- c(0.02,0.1,1,10,50)
+
+simul <- nratio_vec %>% lapply(function(nratio){
+  nB <- nratio*nA
+  init <- c("SA"=nA-2*I0, "IAw"=I0, "IAm"=I0, "RA"=0,
+            "SB"=nB-2*I0, "IBw"=I0, "IBm"=I0, "RB"=0)
+  return(simulate(init, times=seq(0,2500,1), parms=parms) %>% cbind('n_ratio'=nratio))
+}) %>% bind_rows
+
+S_ratio <- simul[,match(c("time", "Approx_WM", "n_ratio"), colnames(simul))]
+S_ratio$S_ratio <- simul$SA/simul$SB*simul$n_ratio
+
+ggplot(simul, aes(x=time, y=lnQ, col=as.factor(n_ratio), lty=Approx_WM)) +
+  geom_line(lwd=0.75) +
+  labs(x='Time',
+       y='Spatial differentiation (log scale)\n',
+        col=expression(N^B/N^A)) +
+  scale_x_continuous(expand=c(0,0), breaks=c(0,10,50,200,500,1000,2000,5000), trans='sqrt') +
+  scale_y_continuous(expand=c(0,0), limits=c(-0.5,0.5), breaks=seq(-0.5,0.5,0.1)) +
+  scale_color_manual(values=colorRampPalette(brewer.pal(9,"Greens"))(length(nratio_vec)+3)[-(1:3)]) +
+  scale_linetype_manual(values=c(1,3)) +
+  theme_minimal() +
+  theme(axis.title.x=element_text(size=12), axis.text.x=element_text(size=12),
+        axis.title.y=element_text(size=12), axis.text.y=element_text(size=12),
+        legend.title=element_text(size=12), legend.text=element_text(size=12)) +
+  guides(lty='none')
+```
+
+# The transient dynamics of spatial differentiation and the migration–selection balance
+
+```{r}
+bAw <- bBw <- bAm <- bBm <- 0.15
+gAw <- gBw <- 0.1
+gAm <- 0.07
+gBm <- 0.04
+
+nA <- 100
+nB <- 100
+
+I0w <- 1E-4
+q0 <- 1/100
+
+init <- c("SA"=nA-I0w-I0m, "IAw"=I0w, "IAm"=q0/(1-q0)*I0w, "RA"=0,
+          "SB"=nB-I0w-I0m, "IBw"=I0w, "IBm"=0, "RB"=0)
+
+tf <- 130
+tM <- 50
+times <- seq(0,tf,0.1)
+```
+
+## No migration
+
+```{r, fig.width=10, fig.height=4}
+mA <- mB <- 0
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gAm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate(init, times[times<=tM], parms, approx.WM=FALSE)
+
+init2 <- simul[nrow(simul),2:9] %>% unlist
+init2[["IBm"]] <- q0/(1-q0)*init2[["IBw"]]
+
+simul <- simul[-nrow(simul),] %>% rbind(simulate(init2, times[times>=tM], parms, approx.WM=FALSE))
+
+simul$logit_qB[simul$time<tM] <- simul$lnQ[simul$time<tM] <- NA
+simul$time <- simul$time-tM
+
+A <- simul %>% subset(time>=0) %>%
+  ggplot(aes(x=time, y=lnQ)) +
+  geom_hline(yintercept=0, col='grey60', lwd=0.4) +
+  geom_line(cex=0.7) +
+  labs(x="Time", y="Spatial log-differentiation\n") +
+  scale_x_continuous(expand=c(0,0), breaks=seq(0,100,20)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-1,6), breaks=seq(-1,6,1)) +
+  theme_classic() +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+        axis.title.y=element_text(size=12), axis.text.y=element_text(size=10)) +
+  guides(lty='none', col='none') +
+  
+  annotation_custom(ggplotGrob(
+    simul[,c("time", "logit_q") %>% sapply(function(x){grep(x, colnames(simul))}) %>% unlist] %>%
+      gather(var, freq, -time) %>%
+      ggplot(aes(x=time, y=freq, col=var)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(cex=0.5) +
+      labs(x="Time", y='Logit-frequency of the variant', col="Population") +
+      scale_color_manual(values=c("black", '#da6967', '#4c97cc'), labels=c("AB", "A", "B")) +
+      scale_x_continuous(expand=c(0,0), breaks=seq(-25,100,25)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(q0),2), breaks=seq(-6,2,2)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=7),
+            axis.title.y=element_text(size=8), axis.text.y=element_text(size=7),
+            legend.position='none')),
+    xmin=30, xmax=tf-tM, ymin=2, ymax=6)
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate(init, times[times<=tM], parms, approx.WM=FALSE)
+
+init2 <- simul[nrow(simul),2:9] %>% unlist
+init2[["IBm"]] <- q0/(1-q0)*init2[["IBw"]]
+
+simul <- simul[-nrow(simul),] %>% rbind(simulate(init2, times[times>=tM], parms, approx.WM=FALSE))
+simul$logit_qB[simul$time<tM] <- simul$lnQ[simul$time<tM] <- NA
+simul$time <- simul$time-tM
+
+B <- simul %>% subset(time>=0) %>%
+  ggplot(aes(x=time, y=lnQ)) +
+  geom_hline(yintercept=0, col='grey60', lwd=0.4) +
+  geom_line(cex=0.7) +
+  labs(x="Time", y="Spatial log-differentiation\n") +
+  scale_x_continuous(expand=c(0,0), breaks=seq(0,100,20)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-1,6), breaks=seq(-1,6,1)) +
+  theme_classic() +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+        axis.title.y=element_blank(), axis.text.y=element_text(size=10)) +
+  guides(lty='none', col='none') +
+  
+  annotation_custom(ggplotGrob(
+    simul[,c("time", "logit_q") %>% sapply(function(x){grep(x, colnames(simul))}) %>% unlist] %>%
+      gather(var, freq, -time) %>%
+      ggplot(aes(x=time, y=freq, col=var)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(cex=0.5) +
+      labs(x="Time", y='Logit-frequency of the variant', col="Population") +
+      scale_color_manual(values=c("black", '#da6967', '#4c97cc'), labels=c("AB", "A", "B")) +
+      scale_x_continuous(expand=c(0,0), breaks=seq(-25,100,25)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(q0),2), breaks=seq(-6,2,2)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=7),
+            axis.title.y=element_text(size=8), axis.text.y=element_text(size=7),
+            legend.title=element_text(size=6), legend.text=element_text(size=6),
+            legend.key.height=unit(0.5,'cm'),
+            legend.background=element_rect(colour='black',linewidth=0.2),
+            plot.title=element_text(size=15, hjust=0.5))),
+    xmin=20, xmax=tf-tM, ymin=1.5, ymax=6)
+
+(AB <- plot_grid(A, B, ncol=2, labels=LETTERS[1:2], align='hv'))
+```
+
+## Low levels of migration
+
+```{r, fig.width=10, fig.height=4}
+mA <- mB <- 1E-2
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gAm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate2(init, times, parms, tM, qB0=q0) %>% subset(Approx_WM==FALSE)
+simul$qB[simul$time<tM] <- simul$lnQ[simul$time<tM] <- simul$lnQ_QE[simul$time<tM] <- NA
+simul$time <- simul$time-tM
+
+C <- simul %>% subset(time>=0) %>%
+  ggplot(aes(x=time, y=lnQ)) +
+  geom_hline(yintercept=0, col='grey60', lwd=0.4) +
+  geom_line(cex=0.7) +
+  labs(x="Time", y="Spatial log-differentiation\n") +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-1,6), breaks=seq(-1,6,1)) +
+  theme_classic() +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+        axis.title.y=element_text(size=12), axis.text.y=element_text(size=10)) +
+  guides(lty='none', col='none') +
+  
+  annotation_custom(ggplotGrob(
+    simul[,c("time", "logit_q") %>% sapply(function(x){grep(x, colnames(simul))}) %>% unlist] %>%
+      gather(var, freq, -time) %>%
+      ggplot(aes(x=time, y=freq, col=var)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(cex=0.5) +
+      labs(x="Time", y='Logit-frequency of the variant', col="Population") +
+      scale_color_manual(values=c("black", '#da6967', '#4c97cc'), labels=c("AB", "A", "B")) +
+      scale_x_continuous(expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(q0),2), breaks=seq(-6,2,2)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=7),
+            axis.title.y=element_text(size=8), axis.text.y=element_text(size=7),
+            legend.position='none')),
+    xmin=30, xmax=tf-tM, ymin=1.5, ymax=6)
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate2(init, times, parms, tM, qB0=q0) %>% subset(Approx_WM==FALSE)
+simul$qB[simul$time<tM] <- simul$lnQ[simul$time<tM] <- simul$lnQ_QE[simul$time<tM] <- NA
+simul$time <- simul$time-tM
+
+D <- simul %>% subset(time>=0) %>%
+  ggplot(aes(x=time, y=lnQ)) +
+  geom_hline(yintercept=0, col='grey60', lwd=0.4) +
+  geom_line(cex=0.7) +
+  labs(x="Time", y="Spatial log-differentiation\n") +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-1,6), breaks=seq(-1,6,1)) +
+  theme_classic() +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(size=9),
+        axis.title.y=element_blank(), axis.text.y=element_text(size=10)) +
+  guides(lty='none', col='none') +
+  
+  annotation_custom(ggplotGrob(
+    simul[,c("time", "logit_q") %>% sapply(function(x){grep(x, colnames(simul))}) %>% unlist] %>%
+      gather(var, freq, -time) %>%
+      ggplot(aes(x=time, y=freq, col=var)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(cex=0.5) +
+      labs(x="Time", y='Logit-frequency of the variant', col="Population") +
+      scale_color_manual(values=c("black", '#da6967', '#4c97cc'), labels=c("AB", "A", "B")) +
+      scale_x_continuous(expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(q0),2), breaks=seq(-6,2,2)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=7),
+            axis.title.y=element_text(size=8), axis.text.y=element_text(size=7),
+            legend.position='none')),
+    xmin=30, xmax=tf-tM, ymin=1.5, ymax=6)
+
+(CD <- plot_grid(C, D, ncol=2, labels=LETTERS[3:4], align='hv'))
+```
+
+## Higher levels of migration
+
+```{r, fig.width=10, fig.height=4}
+mA <- mB <- 0.1
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gAm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate2(init, times, parms, tM, qB0=q0) %>% subset(Approx_WM==FALSE)
+simul$qB[simul$time<tM] <- simul$lnQ[simul$time<tM] <- simul$lnQ_QE[simul$time<tM] <- NA
+simul$time <- simul$time-tM
+
+E <- subset(simul, time>=0) %>%
+  ggplot(aes(x=time, y=lnQ)) +
+  geom_hline(yintercept=0, col='grey60', lwd=0.4) +
+  geom_line(cex=0.7) +
+  labs(x="Time", y="Spatial log-differentiation\n") +
+  scale_linetype_manual(values = 1:2) +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-1,6), breaks=seq(-1,6,1)) +
+  theme_classic() +
+  theme(axis.title.x=element_text(size=11), axis.text.x=element_text(size=9),
+        axis.title.y=element_text(size=12), axis.text.y=element_text(size=10)) +
+  guides(lty='none', col='none') +
+  
+  annotation_custom(ggplotGrob(
+    simul[,c("time", "logit_q") %>% sapply(function(x){grep(x, colnames(simul))}) %>% unlist] %>%
+      gather(var, freq, -time) %>%
+      ggplot(aes(x=time, y=freq, col=var)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(cex=0.5) +
+      labs(x="Time", y='Logit-frequency of the variant', col="Population") +
+      scale_color_manual(values=c("black", '#da6967', '#4c97cc'), labels=c("AB", "A", "B")) +
+      scale_x_continuous(expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(q0),2), breaks=seq(-6,2,2)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=7),
+            axis.title.y=element_text(size=8), axis.text.y=element_text(size=7),
+            legend.position='none') +
+      guides(lty='none')),
+    xmin=30, xmax=tf-tM, ymin=1.5, ymax=6)
+
+parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
+           "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+           "mA"=mA, "mB"=mB)
+
+simul <- simulate2(init, times, parms, tM, qB0=q0) %>% subset(Approx_WM==FALSE)
+simul$qB[simul$time<tM] <- simul$lnQ[simul$time<tM] <- simul$lnQ_QE[simul$time<tM] <- NA
+simul$time <- simul$time-tM
+
+G <- subset(simul, time>=0) %>%
+  ggplot(aes(x=time, y=lnQ)) +
+  geom_hline(yintercept=0, col='grey60', lwd=0.4) +
+  geom_line(cex=0.7) +
+  labs(x="Time", y="Spatial log-differentiation\n") +
+  scale_linetype_manual(values = 1:2) +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0), limits=c(-1,6), breaks=seq(-1,6,1)) +
+  theme_classic() +
+  theme(axis.title.x=element_text(size=11), axis.text.x=element_text(size=9),
+        axis.title.y=element_blank(), axis.text.y=element_text(size=10)) +
+  guides(lty='none', col='none') +
+
+  annotation_custom(ggplotGrob(
+    simul[,c("time", "logit_q") %>% sapply(function(x){grep(x, colnames(simul))}) %>% unlist] %>%
+      gather(var, freq, -time) %>%
+      ggplot(aes(x=time, y=freq, col=var)) +
+      geom_rect(aes(xmin=-Inf, xmax=0, ymin=-Inf, ymax=+Inf), fill='grey93', col=NA) +
+      geom_line(cex=0.5) +
+      labs(x="Time", y='Logit-frequency of the variant', col="Population") +
+      scale_color_manual(values=c("black", '#da6967', '#4c97cc'), labels=c("AB", "A", "B")) +
+      scale_x_continuous(expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0), limits=c(logit(q0),2), breaks=seq(-6,2,2)) +
+      theme_classic() +
+      theme(axis.title.x=element_blank(), axis.text.x=element_text(size=7),
+            axis.title.y=element_text(size=8), axis.text.y=element_text(size=7),
+            legend.position='none') +
+      guides(lty='none')),
+    xmin=30, xmax=tf-tM, ymin=1.5, ymax=6)
+
+(EF <- plot_grid(E, G, ncol=2, labels=LETTERS[5:6], align='hv'))
+```
+
+## Plot assembly
+
+```{r, fig.width=9, fig.height=10}
+plot_grid(plot_grid(ggdraw()+draw_label(expression('\U1D4AE '^A~'='~'\U1D4AE '^B), size=22, hjust=0),
+                    ggdraw()+draw_label(expression('\U1D4AE '^A~'<'~'\U1D4AE '^B), size=22, hjust=0),
+                    ggdraw(), ncol=3, rel_widths=c(0.475,0.475,0.05)),
+          plot_grid(AB, ggdraw()+draw_label(expression(bold('No migration')), angle=-90, size=16),
+                    ncol=2, rel_widths=c(0.95,0.05)),
+          plot_grid(CD, ggdraw()+draw_label(expression(bold('Migration prob.'~'='~10^{-2})), size=16, angle=-90),
+                    ncol=2, rel_widths=c(0.95,0.05)),
+          plot_grid(EF, ggdraw()+draw_label(expression(bold('Migration prob.'~'='~0.1)), size=16, angle=-90),
+                    ncol=2, rel_widths=c(0.95,0.05)),
+          ncol=1, rel_heights=c(0.08,0.46,0.46,0.46))
+
+# ggsave(width=9, height=10, dpi=600, 'Differentiation_Delta_gamma.png')
+```
+
+# Long-term spatial differentiation and local adaptation
+
+```{r}
+bAw <- bBw <- bAm <- bBm <- 0.15
+gAw <- gBw <- 0.1
+gBm <- 0.05
+w <- 0.01
+
+gAm_vec <- seq(0.05,0.15,length.out=300)
+m_vec <- seq(0,0.075,length.out=300)
+
+times <- seq(0,1E6,5E5)
+
+X <- expand.grid(gAm_vec, m_vec) %>% setNames(c("gAm", "m"))
+X$diff_Delta_gamma <- -(X$gAm-gAw)+(gBm-gBw)
+X$lnQ <- NA
+X$lnQ2 <- NA
+```
+
+```{r, eval=FALSE}
+nA <- 100
+nB <- 100
+
+for(i in 1:nrow(X)){
+  
+  gAm <- X$gAm[i]
+  m <- X$m[i]
+  
+  if(gAm<gAw){
+    init <- c("SA"=nA*gAm/bAm,"IAw"=0,
+              "IAm"=nA*(bAm-gAm)*w/(bAm*(gAm+w)),"RA"=nA*(1-gAm/bAm-(bAm-gAm)*w/(bAm*(gAm+w))),
+              "SB"=nB*gBm/bBm,"IBw"=0,
+              "IBm"=nB*(bBm-gBm)*w/(bBm*(gBm+w)),"RB"=nB*(1-gBm/bBm-(bBm-gBm)*w/(bBm*(gBm+w))))
+  }else{
+    init <- c("SA"=nA*gAw/bAw,"IAw"=nA*(bAw-gAw)*w/(bAw*(gAw+w)),
+              "IAm"=0,"RA"=nA*(1-gAw/bAw-(bAw-gAw)*w/(bAw*(gAw+w))),
+              "SB"=nB*gBm/bBm,"IBw"=0,
+              "IBm"=nB*(bBm-gBm)*w/(bBm*(gBm+w)),"RB"=nB*(1-gBm/bBm-(bBm-gBm)*w/(bBm*(gBm+w))))
+  }
+  
+  parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bAm,
+             "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+             "mA"=m, "mB"=m, "w"=w)
+  
+  yend <- lsoda(y=init, times=times, func=SIR_metapop, parms=parms)[length(times),]
+  
+  qA_end <- yend[["IAm"]]/(yend[["IAw"]]+yend[["IAm"]])
+  qB_end <- yend[["IBm"]]/(yend[["IBw"]]+yend[["IBm"]])
+  X$lnQ[i] <- logit(qA_end)-logit(qB_end)
+  
+  f <- (yend[["IAw"]]+yend[["IAm"]])/(yend[["IAw"]]+yend[["IAm"]]+yend[["IBw"]]+yend[["IBm"]])
+  n_ratio <- nB/nA
+  
+  X$Q_approx[i] <- 1+X$diff_Delta_gamma[i]/
+    ((m*bAw/nA+m*bBw/nB)*(qB_end/qA_end*(1-f)/f*yend[["SA"]]+(1-qA_end)/(1-qB_end)*f/(1-f)*yend[["SB"]]))
+}
+
+# saveRDS(X, file="long_term_diff.RDS")
+```
+
+```{r, eval=FALSE}
+nA <- 100
+nB <- 1000
+
+for(i in 1:nrow(X)){
+  
+  gAm <- X$gAm[i]
+  m <- X$m[i]
+  
+  if(gAm<gAw){
+    init <- c("SA"=nA*gAm/bAm,"IAw"=0,
+              "IAm"=nA*(bAm-gAm)*w/(bAm*(gAm+w)),"RA"=nA*(1-gAm/bAm-(bAm-gAm)*w/(bAm*(gAm+w))),
+              "SB"=nB*gBm/bBm,"IBw"=0,
+              "IBm"=nB*(bBm-gBm)*w/(bBm*(gBm+w)),"RB"=nB*(1-gBm/bBm-(bBm-gBm)*w/(bBm*(gBm+w))))
+  }else{
+    init <- c("SA"=nA*gAw/bAw,"IAw"=nA*(bAw-gAw)*w/(bAw*(gAw+w)),
+              "IAm"=0,"RA"=nA*(1-gAw/bAw-(bAw-gAw)*w/(bAw*(gAw+w))),
+              "SB"=nB*gBm/bBm,"IBw"=0,
+              "IBm"=nB*(bBm-gBm)*w/(bBm*(gBm+w)),"RB"=nB*(1-gBm/bBm-(bBm-gBm)*w/(bBm*(gBm+w))))
+  }
+  
+  parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bAm,
+             "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
+             "mA"=m, "mB"=m, "w"=w)
+  
+  yend <- lsoda(y=init, times=times, func=SIR_metapop, parms=parms)[length(times),]
+  
+  qA_end <- yend[["IAm"]]/(yend[["IAw"]]+yend[["IAm"]])
+  qB_end <- yend[["IBm"]]/(yend[["IBw"]]+yend[["IBm"]])
+  X$lnQ[i] <- logit(qA_end)-logit(qB_end)
+  
+  f <- (yend[["IAw"]]+yend[["IAm"]])/(yend[["IAw"]]+yend[["IAm"]]+yend[["IBw"]]+yend[["IBm"]])
+  n_ratio <- nB/nA
+  
+  X$Q_approx[i] <- 1+X$diff_Delta_gamma[i]/
+    ((m*bAw/nA+m*bBw/nB)*(qB_end/qA_end*(1-f)/f*yend[["SA"]]+(1-qA_end)/(1-qB_end)*f/(1-f)*yend[["SB"]]))
+}
+
+# saveRDS(X, file="long_term_diff2.RDS")
+```
+
+```{r}
+ggarrange(
+  
+  readRDS("long_term_diff.RDS") %>% subset(diff_Delta_gamma<=gBm-gBw) %>%
+    ggplot(aes(x=diff_Delta_gamma, y=m, fill=lnQ)) +
+    geom_rect(aes(xmin=-(gAm_vec[which(gAm_vec>gAw)[1]]-gAw)+gBm-gBw,
+                  xmax=0, ymin=0, ymax=max(m_vec)), col='black') +
+    geom_abline(slope=0.5, intercept=seq(-0.1,0.1,0.005), linewidth=0.1) +
+    geom_tile() +
+    labs(title=expression(N^B/N^A~'='~1),
+         x=expression('\U1D4AE '^A-'\U1D4AE '^ B), y=expression(paste('Migration ',mu))) +
+    scale_x_continuous(expand=c(0,0), limits=c(-0.1,0)) +
+    scale_y_continuous(expand=c(0,0)) +
+    scale_fill_viridis_c(limits=c(-15,-4), name="ln(\U1D4AC)") +
+    theme(axis.title.x=element_text(size=12), axis.title.y=element_text(size=12),
+          legend.title=element_text(size=14), plot.title=element_text(hjust=0.5)),
+  
+  readRDS("long_term_diff2.RDS") %>% subset(diff_Delta_gamma<=gBm-gBw) %>%
+    ggplot(aes(x=diff_Delta_gamma, y=m, fill=lnQ)) +
+    geom_rect(aes(xmin=-(gAm_vec[which(gAm_vec>gAw)[1]]-gAw)+gBm-gBw,
+                  xmax=0, ymin=0, ymax=max(m_vec)), col='black') +
+    geom_abline(slope=0.5, intercept=seq(-0.1,0.1,0.005), linewidth=0.1) +
+    geom_tile() +
+    labs(title=expression(N^B/N^A~'='~10),
+         x=expression('\U1D4AE '^A-'\U1D4AE '^ B), y=expression(paste('Migration ',mu))) +
+    scale_x_continuous(expand=c(0,0), limits=c(-0.1,0)) +
+    scale_y_continuous(expand=c(0,0)) +
+    scale_fill_viridis_c(limits=c(-15,-4), name="ln(\U1D4AC)") +
+    theme(axis.title.x=element_text(size=12), axis.title.y=element_text(size=12),
+          legend.title=element_text(size=14), plot.title=element_text(hjust=0.5)),
+  
+  ncol=2, common.legend=TRUE, legend='right', labels=LETTERS[1:2])
+
+# ggsave(width=7, height=3.5, dpi=500, 'Long_term_lnQ.png')
+```
+
