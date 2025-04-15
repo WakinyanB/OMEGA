@@ -30,7 +30,7 @@ All data used in the scripts are in the 'Data' folder.
 
 &#11169;&emsp; Google mobility reports. This dataset was downloaded from the website [*Our World in Data*](https://ourworldindata.org/covid-mobility-trends) on April 8, 2025.<br>
 
-*Hannah Ritchie (2020) - “Google Mobility Trends: How has the pandemic changed the movement of people around the world?” Published online at OurWorldinData.org. Retrieved from: ['https://ourworldindata.org/covid-mobility-trends'](https://ourworldindata.org/covid-mobility-trends) [Online Resource]*
+<sub>*Hannah Ritchie (2020) - “Google Mobility Trends: How has the pandemic changed the movement of people around the world?” Published online at OurWorldinData.org. Retrieved from: ['https://ourworldindata.org/covid-mobility-trends'](https://ourworldindata.org/covid-mobility-trends) [Online Resource]*</sub>
 
 ## R codes
 
