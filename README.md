@@ -3,10 +3,10 @@
 Data & Codes for:<br>
 **The interplay between migration and selection on the dynamics of pathogen variants**
 
-Wakinyan Benhamou<sup>1,2</sup>, Rémi Choquet<sup>1</sup> and Sylvain Gandon<sup>1</sup>
+<!--Wakinyan Benhamou<sup>1,2</sup>, Rémi Choquet<sup>1</sup> and Sylvain Gandon<sup>1</sup>
 
 *<sup>1</sup> CEFE, Univ Montpellier, CNRS, EPHE, IRD, Montpellier, France*<br>
-*<sup>2</sup> High Meadows Environmental Institute, Princeton University, Princeton, NJ, USA*<br>
+*<sup>2</sup> High Meadows Environmental Institute, Princeton University, Princeton, NJ, USA*<br>-->
 
 ## Data (sources and short descriptions)
 
