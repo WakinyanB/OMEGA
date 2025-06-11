@@ -10,8 +10,6 @@ Wakinyan Benhamou<sup>1,2</sup>, Rémi Choquet<sup>2</sup> and Sylvain Gandon<su
 
 ## Data (sources and short descriptions)
 
-All data used in the scripts are in the 'Data' folder. 
-
 ### VOC_202012_01_Technical_Briefing_5_Data_England.ods
 
 [DOWNLOAD](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/957631/Variant_of_Concern_VOC_202012_01_Technical_Briefing_5_Data_England.ods) (ods file)
@@ -22,9 +20,7 @@ All data used in the scripts are in the 'Data' folder.
 <sub>Technical briefings 1 to 23: https://www.gov.uk/government/publications/investigation-of-novel-sars-cov-2-variant-variant-of-concern-20201201</sub><br>
 <sub>From technical briefing 24: https://www.gov.uk/government/publications/investigation-of-sars-cov-2-variants-technical-briefings</sub>
 
-### Delta_data.rds
-
-&#11169;&emsp; Data for the sweep of the Delta variant. The data were shared by Erik Volz who used them in [Volz, E. Fitness, growth and transmissibility of SARS-CoV-2 genetic variants. Nat Rev Genet 24, 724–734 (2023)](https://doi.org/10.1038/s41576-023-00610-z) (see Fig. 1-a).
+Data for the sweep of the Delta variant. The data were shared by Erik Volz who used them in [Volz, E. Fitness, growth and transmissibility of SARS-CoV-2 genetic variants. Nat Rev Genet 24, 724–734 (2023)](https://doi.org/10.1038/s41576-023-00610-z) (see Fig. 1-a).
 
 ### changes-visitors-covid
 
