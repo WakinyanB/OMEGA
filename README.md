@@ -34,8 +34,9 @@ All the scripts are in the root directory of this repositery.
 
 Scripts:
 - **Functions.R** (script with custom functions, including the ODE models)
-- **Theoretical_figures.Rmd** (plot all the theoretical figures)
-- **Analyses_VOC_Alpha_Delta.R** (analyses and plots using the data for the Alpha and Delta variants in England)
+- **Theoretical_figures_v2.Rmd** (plot theoretical figures)
+- **Simulation_study_section_3.R** (plot Fig. 4. Relative errors in selection estimation (see section 3 of the main text))
+- **Analyses_VOC_Alpha_Delta_v2.R** (analyses and plots using the data for the Alpha and Delta variants in England)
 
 ## Outputs
 
