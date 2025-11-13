@@ -30,8 +30,6 @@ Data for the sweep of the Delta variant. The data were shared by Erik Volz who u
 
 ## R codes
 
-All the scripts are in the root directory of this repositery.
-
 Scripts:
 - **Functions.R** (script with custom functions, including the ODE models)
 - **Theoretical_figures_v2.Rmd** (plot theoretical figures)
