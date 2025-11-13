@@ -38,7 +38,7 @@ Scripts:
 - **Simulation_study_section_3.R** (plot Fig. 4. Relative errors in selection estimation (see section 3 of the main text))
 - **Analyses_VOC_Alpha_Delta_v2.R** (analyses and plots using the data for the Alpha and Delta variants in England)
 
-## Outputs
+## RDS files (outputs)
 
 - **long_term_diff.RDS** (first panel, N<sup>B</sup>/N<sup>A</sup>=1)
 - **long_term_diff2.RDS** (second panel, N<sup>B</sup>/N<sup>A</sup>=10)
