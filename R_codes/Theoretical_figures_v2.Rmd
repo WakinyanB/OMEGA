@@ -176,17 +176,18 @@ plot_grid(
       labs(x="Time", y="Slope (pop. B)") +
       scale_x_continuous(breaks=x_breaks, expand=c(0,0)) +
       scale_y_continuous(expand=c(0,0)) +
-      scale_fill_manual(values=c(colors[2],'#99c2e6'), labels=c("S^B", "H^B/(q^B(1-q^B))")) +
+      scale_fill_manual(values=c(colors[2],'#99c2e6'), labels=c("S^B", "H^B")) +
       theme_classic() +
       theme(axis.title.x=element_text(size=10), axis.text.x=element_text(size=9),
             axis.title.y=element_text(size=9), axis.text.y=element_text(size=8),
             legend.title=element_blank(), legend.text=element_text(size=7),
-            legend.position=c(0.7,0.7)),
+            legend.position=c(0.8,0.7)),
     ncol=1, labels = c('B', 'C'), align = 'v'),
   ncol=2, rel_widths = c(0.6,0.4), labels=c('A')) # 8 x 4
 
 # ggsave("Dynamics_logit_freq_AB_transmission_V3.png", width=8, height=4, dpi=1000)
 ```
+
 
 ```{r, fig.width=4.4, fig.height=5.6}
 tf2 <- 160
@@ -422,7 +423,7 @@ mB <- 1E-2
 
 parms <- c("bAw"=bAw, "bBw"=bBw, "bAm"=bAm, "bBm"=bBm,
            "gAw"=gAw, "gBw"=gBw, "gAm"=gAm, "gBm"=gBm,
-           "mA"=mA, "mB"=mB)
+           "w"=0.01, "mA"=mA, "mB"=mB)
 
 I0 <- 1E-3
 
@@ -433,7 +434,7 @@ simul <- nratio_vec %>% lapply(function(nratio){
   nB <- nratio*nA
   init <- c("SA"=nA-2*I0, "IAw"=I0, "IAm"=I0, "RA"=0,
             "SB"=nB-2*I0, "IBw"=I0, "IBm"=I0, "RB"=0)
-  return(simulate(init, times=seq(0,2500,1), parms=parms) %>% cbind('n_ratio'=nratio))
+  return(simulate(init, times=seq(0,1100,1), parms=parms) %>% cbind('n_ratio'=nratio))
 }) %>% bind_rows
 
 S_ratio <- simul[,match(c("time", "Approx_WM", "n_ratio"), colnames(simul))]
