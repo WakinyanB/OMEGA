@@ -31,10 +31,10 @@ Data for the sweep of the Delta variant were shared by Erik Volz who used them i
 ## R codes
 
 Scripts:
-- **Functions.R**: script with custom functions, including the ODE models
-- **Theoretical_figures_v3.Rmd**: plot theoretical figures: Fig. 3 and supplementary figures S2, S3, S4, S5, S6, S7 and S10
-- **Simulation_study_section_3.R**: plot Fig. 4. Relative errors in selection estimation (see section 3 of the main text)
-- **Analyses_VOC_Alpha_Delta_v3.R**: analyses and plots using the data for the Alpha and Delta variants in England, plot Fig. 1 and 5, and supplementary figures S1, S8 and S9
+- **Functions.R** -- script with custom functions, including the ODE models
+- **Theoretical_figures_v3.Rmd** -- plot theoretical figures: Fig. 3 and supplementary figures S2, S3, S4, S5, S6, S7 and S10
+- **Simulation_study_section_3.R** -- plot Fig. 4. Relative errors in selection estimation (see section 3 of the main text)
+- **Analyses_VOC_Alpha_Delta_v3.R** -- analyses and plots using the data for the Alpha and Delta variants in England, plot Fig. 1 and 5, and supplementary figures S1, S8 and S9
 
 ## RDS files (outputs)
 
