@@ -20,7 +20,7 @@ Wakinyan Benhamou<sup>1,2</sup>, Rémi Choquet<sup>2</sup> and Sylvain Gandon<su
 <sub>Technical briefings 1 to 23: https://www.gov.uk/government/publications/investigation-of-novel-sars-cov-2-variant-variant-of-concern-20201201</sub><br>
 <sub>From technical briefing 24: https://www.gov.uk/government/publications/investigation-of-sars-cov-2-variants-technical-briefings</sub>
 
-Data for the sweep of the Delta variant. The data were shared by Erik Volz who used them in [Volz, E. Fitness, growth and transmissibility of SARS-CoV-2 genetic variants. Nat Rev Genet 24, 724–734 (2023)](https://doi.org/10.1038/s41576-023-00610-z) (see Fig. 1-a).
+Data for the sweep of the Delta variant were shared by Erik Volz who used them in [Volz, E. Fitness, growth and transmissibility of SARS-CoV-2 genetic variants. Nat Rev Genet 24, 724–734 (2023)](https://doi.org/10.1038/s41576-023-00610-z) (see Fig. 1-a).
 
 ### changes-visitors-covid
 
