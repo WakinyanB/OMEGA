@@ -2,6 +2,7 @@
 
 Data & Codes for:<br>
 **The interplay between migration and selection on the dynamics of pathogen variants**
+Journal of the Royal Society Interface
 
 Wakinyan Benhamou<sup>1,2</sup>, Rémi Choquet<sup>2</sup> and Sylvain Gandon<sup>2</sup>
 
