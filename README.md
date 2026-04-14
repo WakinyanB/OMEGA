@@ -44,4 +44,4 @@ Scripts:
 - **long_term_diff.RDS** (first panel, N<sup>B</sup>/N<sup>A</sup>=1)
 - **long_term_diff2.RDS** (second panel, N<sup>B</sup>/N<sup>A</sup>=10)
 
-This two files are generated in **Theoretical_figures_v3.Rmd** when we compute the long-term differentiation. The code takes some time to run so results are saved here.
+This two files are generated in **Theoretical_figures_v3.Rmd** when we compute the long-term differentiation.
