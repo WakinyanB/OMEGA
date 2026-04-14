@@ -8,7 +8,8 @@ Wakinyan Benhamou<sup>1,2</sup>, Rémi Choquet<sup>2</sup> and Sylvain Gandon<su
 *<sup>1</sup> High Meadows Environmental Institute, Princeton University, Princeton, NJ, USA*<br>
 *<sup>2</sup> CEFE, Univ Montpellier, CNRS, EPHE, IRD, Montpellier, France*<br>
 
-Journal of the Royal Society Interface (2026)
+
+Journal of the Royal Society Interface 23.237 (2026). doi:[10.1098/rsif.2025.0867](https://doi.org/10.1098/rsif.2025.0867).
 
 ## Data (sources and short descriptions)
 
